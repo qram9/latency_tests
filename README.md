@@ -27,6 +27,7 @@ This is what I saw
 
 
 ./m4_profiler 
+
 64.00 KB | Latency: 53.9551 ns/hop
 
 4.00 MB | Latency: 144.657 ns/hop
