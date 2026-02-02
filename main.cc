@@ -23,6 +23,11 @@
 #include "utils.h"
 #include <iostream>
 
+// Updated to use the safer memory_block API:
+// - rely on RAII: explicit destroy() calls removed (destructors free resources)
+// - map/unmap calls prefer the device stored by memory_block::create(); we
+//   pass VK_NULL_HANDLE for clarity to show the caller no longer needs to
+//   forward the device handle repeatedly.
 int main() {
   gpu_system m4;
   m4.initialize();
@@ -36,9 +41,12 @@ int main() {
   // The Sweep
   for (uint32_t count : {16 * 1024, 1024 * 1024, 256 * 1024 * 1024}) {
     VkDeviceSize size = count * sizeof(uint32_t);
+
+    // memory_block now stores the device internally when create() is called.
+    // We can rely on RAII to free resources when the objects go out of scope.
     memory_block nodes, result;
 
-    // Setup memory
+    // Setup memory (store device internally during create)
     nodes.create(m4.logical_device_handle, m4.physical_device_handle, size,
                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
@@ -50,10 +58,12 @@ int main() {
                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    // Prep data
-    uint32_t *ptr = (uint32_t *)nodes.map(m4.logical_device_handle);
+    // Prep data: pass VK_NULL_HANDLE to map() to indicate we rely on the
+    // stored device inside memory_block. The implementation prefers the
+    // stored device and ignores the passed parameter for compatibility.
+    uint32_t *ptr = reinterpret_cast<uint32_t *>(nodes.map(VK_NULL_HANDLE));
     initialize_and_shuffle_indices(ptr, count);
-    nodes.unmap(m4.logical_device_handle);
+    nodes.unmap(VK_NULL_HANDLE);
 
     // Run
     latency_bench.bind_blocks(m4.logical_device_handle, {&nodes, &result});
@@ -65,8 +75,9 @@ int main() {
     std::cout << formatBytes(size) << " | Latency: " << ns << " ns/hop"
               << std::endl;
 
-    nodes.destroy(m4.logical_device_handle);
-    result.destroy(m4.logical_device_handle);
+    // No explicit destroy() needed: nodes and result will be destroyed when
+    // they go out of scope, freeing their Vulkan resources in their
+    // destructors.
   }
 
   m4.shutdown();
