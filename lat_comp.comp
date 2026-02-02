@@ -1,0 +1,18 @@
+#version 450
+
+layout(set = 0, binding = 0) coherent buffer DataBuffer {
+    uint data[];
+} nodes;
+
+layout(set = 0, binding = 1) buffer ResultBuffer {
+    uint value;
+} result;
+
+void main() {
+    uint current = 0;
+    // 1 Million hops to measure latency
+    for (int i = 0; i < 1000000; i++) {
+        current = nodes.data[current];
+    }
+    result.value = current;
+}
