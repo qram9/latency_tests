@@ -1,7 +1,7 @@
 # latency_tests
 ### measure latencies on gpus
 
-This is almost entirely done with the free AI available at google.com  - hit AI mode 
+This is almost entirely done with the free AI available at google.com   - hit AI mode  or github copilot free
 
 You would need Molten-VK & vulkan for this
 
